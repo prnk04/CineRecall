@@ -1,0 +1,85 @@
+-- table creations
+
+CREATE TABLE "CAST_CREW_DETAILS" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"name"	TEXT,
+	"tmdb_id"	INTEGER UNIQUE,
+	"created_at"	NUMERIC,
+	PRIMARY KEY("id" AUTOINCREMENT)
+)
+
+
+CREATE TABLE "GENRES" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"genre"	TEXT NOT NULL UNIQUE,
+	"created_at"	NUMERIC,
+	PRIMARY KEY("id" AUTOINCREMENT)
+)
+
+CREATE TABLE "MOVIE_CREW_DETAILS" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"movie_id"	INTEGER NOT NULL,
+	"crew_id"	INTEGER NOT NULL,
+	"character"	TEXT,
+	"job"	TEXT,
+	"description"	TEXT,
+	"created_at"	NUMERIC,
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("crew_id") REFERENCES "CAST_CREW_DETAILS"("tmdb_id"),
+	FOREIGN KEY("movie_id") REFERENCES "MOVIE_DETAILS"("tmdb_id")
+)
+
+
+CREATE TABLE "MOVIE_DETAILS" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"tmdb_id"	INTEGER NOT NULL UNIQUE,
+	"imdb_id"	TEXT,
+	"title"	TEXT NOT NULL,
+	"release_year"	INTEGER,
+	"original_language"	TEXT DEFAULT en,
+	"adult"	INTEGER,
+	"tagline"	TEXT,
+	"book_adaptation"	INTEGER,
+	"created_at"	INTEGER,
+	PRIMARY KEY("id" AUTOINCREMENT)
+)
+
+CREATE TABLE "MOVIE_EMBEDDING_STATUS" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"tmdb_id"	INTEGER NOT NULL,
+	"status"	TEXT NOT NULL,
+	"embedding_model"	TEXT,
+	PRIMARY KEY("id" AUTOINCREMENT)
+)
+
+
+CREATE TABLE "MOVIE_GENRE_DETAILS" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"movie_id"	INTEGER NOT NULL,
+	"genre_id"	INTEGER NOT NULL,
+	"created_at"	NUMERIC,
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("genre_id") REFERENCES "GENRES"("id"),
+	FOREIGN KEY("movie_id") REFERENCES "MOVIE_DETAILS"("tmdb_id")
+)
+
+
+CREATE TABLE "MOVIE_NAME_MAPPING" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"tmdb_id"	INTEGER NOT NULL UNIQUE,
+	"original_title"	TEXT,
+	"alt_title"	TEXT,
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("tmdb_id") REFERENCES "MOVIE_DETAILS"("tmdb_id")
+)
+
+
+CREATE TABLE "MOVIE_PLOT" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"movie_id"	INTEGER NOT NULL,
+	"plot_type"	TEXT NOT NULL,
+	"plot"	TEXT,
+	"created_at"	NUMERIC,
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("movie_id") REFERENCES "MOVIE_DETAILS"("tmdb_id")
+)
