@@ -12,7 +12,7 @@ _CineRecall is built as a learning-focused, retrieval-first GenAI system rather 
 
 🌐 Live Demo
 
-[CineRecall]()
+[CineRecall](https://cinerecall.streamlit.app/)
 
 ---
 

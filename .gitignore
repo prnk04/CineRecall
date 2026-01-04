@@ -1,8 +1,4 @@
 # Data & databases
-data/*
-
-!data/processed/demo_chunks.json
-
 chroma/
 *.db
 *.sqlite
