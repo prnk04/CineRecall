@@ -1,4 +1,4 @@
-# ?? CineRecall
+# 🎬 CineRecall
 
 CineRecall is a Retrieval-Augmented Generation (RAG) system designed to identify movies from fuzzy, incomplete, or imperfect plot memories.
 
@@ -16,7 +16,7 @@ _CineRecall is built as a learning-focused, retrieval-first GenAI system rather 
 
 ---
 
-## ?? Demo
+## 🎥 Demo
 
 ![CineRecall Demo](resources/demo.gif)
 
@@ -24,25 +24,25 @@ _CineRecall is built as a learning-focused, retrieval-first GenAI system rather 
 
 ## 📋 Table of Contents
 
-- [Problem Statement](#problem-statement)
-- [What CineRecall Does](#what-cinerecall-does)
-- [System Architecture](#️system-architecture)
-- [Data & Offline Ingestion](#️data--offline-ingestion)
-- [Retrieval Design (Core of the Project)](#retrieval-design-core-of-the-project)
-- [Embeddings Strategy](#embeddings-strategy)
-- [Retrieval Evaluation & Analytics](#retrieval-evaluation--analytics)
-- [LLM Context Transparency](#llm-context-transparency)
-- [LLM Prompting Strategy](#llm-prompting-strategy)
-- [Rate Limiting & Cost Controls](#️rate-limiting--cost-controls)
-- [Tech Stack](#tech-stack)
-- [Project Phases](#project-phases)
-- [Data & Database Availability](#data--database-availability)
-- [Required Setup (Before Running the App)](#required-setup-before-running-the-app)
-- [Limitations & Trade-offs](#️limitations--trade-offs)
-- [How to Run Locally](#how-to-run-locally)
-- [Example Queries](#example-queries)
-- [What I Learned Building This](#what-i-learned-building-this)
-- [Acknowledgements](#acknowledgements)
+- [Problem Statement](#-problem-statement)
+- [What CineRecall Does](#-what-cinerecall-does)
+- [System Architecture](#️-system-architecture)
+- [Data & Offline Ingestion](#️-data--offline-ingestion)
+- [Retrieval Design (Core of the Project)](#-retrieval-design-core-of-the-project)
+- [Embeddings Strategy](#-embeddings-strategy)
+- [Retrieval Evaluation & Analytics](#-retrieval-evaluation--analytics)
+- [LLM Context Transparency](#-llm-context-transparency)
+- [LLM Prompting Strategy](#-llm-prompting-strategy)
+- [Rate Limiting & Cost Controls](#️-rate-limiting--cost-controls)
+- [Tech Stack](#-tech-stack)
+- [Project Phases](#-project-phases)
+- [Data & Database Availability](#-data--database-availability)
+- [Required Setup (Before Running the App)](#-required-setup-before-running-the-app)
+- [Limitations & Trade-offs](#️-limitations--trade-offs)
+- [How to Run Locally](#-how-to-run-locally)
+- [Example Queries](#-example-queries)
+- [What I Learned Building This](#-what-i-learned-building-this)
+- [Acknowledgements](#-acknowledgements)
 
 ---
 
@@ -374,10 +374,19 @@ CHROMA_MOVIES_COLLECTION=<your_chroma_collection_name>
 CHROMA_DIR=<your_chroma_persist_dir_path>
 CHROMA_DB_VERSION=v0
 LAST_EMBEDDED_ID=0
+APP_MODE=demo
+DEMO_DOCS=<path to demo movie details file>
+CHROMA_DIR_DEMO=<demo_dir_for_chroma>
 
 # required for LLM
 OPENAI_API_KEY=<your_open_ai_key>
 ```
+
+- **If you want to run the app without much hassle, do the following, else, go to step 4:**
+
+  - set APP_MODE=demo in .env file
+  - Run `python -m src.ingestion.data_ingestion`
+  - Launch the app `streamlit run app.py`
 
 - Step 4: Create the database to store the movies details and to create the tables, run the commands in file 'createTables.sql'
 
@@ -420,10 +429,11 @@ streamlit run app.py
 
 ## 💬 Example Queries:
 
-- A movie where a teenager accidentally travels back in time and interferes with his parents' first meeting.
-- An adventure movie about pirates, a cursed crew, and a ship that appears at night
-- movie where obi-wan sacrifices himself
-- movie about a heist gone wrong involving british gangsters
+- A teenager and an old scientist travel through time in a car, something goes wrong and they need lightning to fix it
+- A group of toys secretly come to life when humans aren't around. The main toy feels jealous when a new toy becomes the favorite, and they get lost while trying to return home.
+- A musician and an aspiring actress fall in love while chasing their dreams in a big city, but their careers slowly pull them in different directions.
+- Spy movie, involves poker, casino, lots of fancy places
+- Woman runs away from her home and frames her husband for her allegged murder
 
 ---
 

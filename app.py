@@ -167,7 +167,7 @@ def create_footer():
             """
             <div style='text-align: center; color: gray; '>
                 Built with ❤️ using LangChain and  OpenAI GPT-4o-mini | 
-                <a href='https://github.com/prnk04/Smart_Document_Analyser.git' target='_blank'>View on GitHub</a>
+                <a href='https://github.com/prnk04/CineRecall' target='_blank'>View on GitHub</a>
                 
             </div>
             """,

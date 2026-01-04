@@ -30,6 +30,10 @@ import logging
 from src import get_vector_store
 from src.rag.llm_client import LLMClient
 from src.utils import logError
+from src.document_deserialization import json_to_documents
+from src.config import APP_MODE, FINGERPRINT
+from src.fingerprint import fingerprint_matches
+from src.ingestion.data_ingestion import DataIngestion
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -53,6 +57,18 @@ class UserQuery:
 
     def retrieve_movie(self, user_input, movie_expected=None):
         try:
+
+            app_mode = os.getenv("APP_MODE", "demo")
+
+            if app_mode == "demo":
+                persist_dir = os.getenv("CHROMA_DIR_DEMO", "data/chroma_demo/v0")
+                is_valid = os.path.exists(persist_dir) and fingerprint_matches(
+                    persist_dir, FINGERPRINT
+                )
+
+                if not is_valid:
+                    di = DataIngestion(20, 0)
+                    di.ingest_from_json()
 
             relevant_docs = self.vector_store.similarity_search_with_score(
                 user_input, k=10
@@ -143,8 +159,6 @@ class UserQuery:
             logger.info("Context for LLM:\n %s", plots_to_send)
             print("-" * 150)
 
-            return
-
             llmClient = LLMClient()
             input_prompt = f"""
                                 You are given a movie plot {user_input} by a user, who has a fuzzy memory about the movie. Given the context, figure out which movie the user is talking about.
@@ -204,15 +218,3 @@ class UserQuery:
         except Exception as e:
             logger.error("Error in data retrieval %s", e)
             logError(e, "UserQuery.retrieve_movie", "Error in retrieving data")
-
-
-def main():
-    uq = UserQuery()
-    uq.retrieve_movie(
-        "movie where obi wan sacrifices himself",
-        "Star Wars: Episode III - Revenge of the Sith",
-    )
-
-
-if __name__ == "__main__":
-    main()

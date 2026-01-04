@@ -19,6 +19,10 @@ from src.ingestion.get_movies_from_db import GetMoviesFromDB
 from src import get_vector_store
 from src.utils import logError
 
+from src.config import APP_MODE, FINGERPRINT
+from src.fingerprint import fingerprint_matches, write_fingerprint
+from src.document_deserialization import json_to_documents
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -32,16 +36,55 @@ class DataIngestion:
         self.batch_size = batch_size
         self.last_processed_id = last_processed_id
 
+    def ingest_from_json(self):
+        stage = "start"
+        logger.info("[START] INGESTION")
+        DEMO_DOCS_PATH = os.getenv("DEMO_DOCS", "data/processed/demo_chunks.json")
+
+        try:
+            vector_store = get_vector_store()
+            persist_dir = os.getenv("CHROMA_DIR_DEMO", "data/chroma_demo/v0")
+
+            # Check fingerprint validity
+            is_valid = os.path.exists(persist_dir) and fingerprint_matches(
+                persist_dir, FINGERPRINT
+            )
+
+            print("is valid? ", is_valid)
+            print("finger: ", FINGERPRINT)
+
+            if is_valid:
+                return vector_store
+
+            with open(DEMO_DOCS_PATH, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+
+            documents = json_to_documents(raw)
+            vector_store.add_documents(documents)
+            write_fingerprint(persist_dir, FINGERPRINT)
+            logger.info("Documents added in vector store")
+
+        except Exception as e:
+            logger.error(
+                "Error in data ingestion from json at stage '%s': %s",
+                stage,
+                e,
+                exc_info=True,
+            )
+            logError(
+                e,
+                "DataIngestion.ingest_from_json",
+                f"Error in data ingestion at stage {stage}",
+            )
+
     def ingest(self):
         stage = "start"
         logger.info("[START] INGESTION")
 
         try:
+            vector_store = get_vector_store()
             movie_details_instance = GetMoviesFromDB()
             conn = movie_details_instance.get_db_connection()
-
-            # ✅ Use centralized get_vector_store()
-            vector_store = get_vector_store()
 
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=1200,
@@ -220,7 +263,11 @@ class DataIngestion:
 
 def main():
     di = DataIngestion(batch_size=200, last_processed_id=0)
-    di.ingest()
+    # di.ingest()
+    if APP_MODE == "demo":
+        di.ingest_from_json()
+    else:
+        di.ingest()
 
 
 if __name__ == "__main__":
