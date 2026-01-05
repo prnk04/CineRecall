@@ -1,12 +1,11 @@
 # 🎬 CineRecall
 
-CineRecall is a Retrieval-Augmented Generation (RAG) system designed to identify movies from fuzzy, incomplete, or imperfect plot memories.
+_A Retrieval-First RAG System for Movie Recall from Fuzzy Memory_
 
-_"I remember a movie where a robbery goes wrong" British gangsters" lots of chaos."_
+CineRecall helps users identify movies based on imprecise, partial, or fuzzy plot descriptions.
+Instead of relying on the LLM alone, CineRecall emphasizes retrieval quality, evidence diversity, and empirical evaluation across chunking, embedding, and search strategies.
 
-CineRecall helps you find that movie.
-
-_CineRecall is built as a learning-focused, retrieval-first GenAI system rather than a consumer-facing product._
+_"I remember a movie where a robbery goes wrong — British gangsters, lots of chaos."_
 
 ---
 
@@ -26,21 +25,21 @@ _CineRecall is built as a learning-focused, retrieval-first GenAI system rather 
 
 - [Problem Statement](#-problem-statement)
 - [What CineRecall Does](#-what-cinerecall-does)
+- [Why CineRecall Is Different](#-why-cinerecall-is-different)
 - [System Architecture](#️-system-architecture)
-- [Data & Offline Ingestion](#️-data--offline-ingestion)
-- [Retrieval Design (Core of the Project)](#-retrieval-design-core-of-the-project)
+- [Data & Storage](#-data--storage)
+- [Chunking Strategy](#-chunking-strategy)
 - [Embeddings Strategy](#-embeddings-strategy)
+- [Retrieval Design (Core of the Project)](#-retrieval-design-core-of-the-project)
 - [Retrieval Evaluation & Analytics](#-retrieval-evaluation--analytics)
 - [LLM Context Transparency](#-llm-context-transparency)
 - [LLM Prompting Strategy](#-llm-prompting-strategy)
 - [Rate Limiting & Cost Controls](#️-rate-limiting--cost-controls)
 - [Tech Stack](#-tech-stack)
 - [Project Phases](#-project-phases)
-- [Data & Database Availability](#-data--database-availability)
-- [Required Setup (Before Running the App)](#-required-setup-before-running-the-app)
-- [Limitations & Trade-offs](#️-limitations--trade-offs)
-- [How to Run Locally](#-how-to-run-locally)
+- [Running the Project](#️-running-the-project)
 - [Example Queries](#-example-queries)
+- [Limitations & Trade-offs](#️-limitations--trade-offs)
 - [What I Learned Building This](#-what-i-learned-building-this)
 - [Acknowledgements](#-acknowledgements)
 
@@ -60,7 +59,8 @@ Traditional keyword search fails because:
 - memory is imprecise
 - wording is inconsistent
 - relevant information is spread across plot, title, tagline, and metadata
-- CineRecall solves this using semantic retrieval + controlled LLM reasoning.
+
+CineRecall solves this using semantic retrieval + controlled LLM reasoning.
 
 ---
 
@@ -74,7 +74,20 @@ Traditional keyword search fails because:
 
 - movie title
 - explanation
-- confidence score
+
+---
+
+## ⭐ Why CineRecall Is Different
+
+Most RAG demos focus on the LLM.
+CineRecall focuses on **retrieval quality, evidence diversity, and evaluation**.
+
+Key differentiators:
+
+- Retrieval-first design
+- Empirical comparison of chunking + embeddings + search strategies
+- Custom redundancy metrics for LLM context quality
+- Transparent, auditable LLM prompts
 
 ---
 
@@ -88,34 +101,80 @@ Traditional keyword search fails because:
 
   - Collect movie data from TMDB & Wikipedia
   - Store structured data in SQLite
+  - Chunk the documents
   - Generate embeddings and store in ChromaDB
 
 - #### Online pipeline
   - User query → embedding
   - Vector search → top-K relevant chunks
   - Evidence-based prompt → LLM
-  - Structured JSON output
+  - Final movie prediction with explanation & confidence
 
 ---
 
-## 🗄️ Data & Offline Ingestion
+## 📁 Data & Storage
 
-### Data Sources
+#### SQLite (Relational Store)
 
-- MovieLens
-- TMDB
-- Wikipedia
+SQLite is used to store:
 
-### Storage
+- movie metadata
+- titles and alternate titles
+- genres
+- cast & crew
+- plot variants (short / detailed)
 
-- SQLite: structured movie metadata
-- ChromaDB: semantic vector storage
+⚠️ Note: SQLite database is **not included** in the repository. Created via the offline ingestion pipeline
 
-Offline ingestion ensures:
+#### ChromaDB (Vector Store)
 
-- reproducibility
-- controlled experimentation
-- no runtime scraping
+- ChromaDB stores:
+  - embeddings for movie documents
+  - chunked detailed plots
+  - atomic title / tagline / short plot documents
+- Persisted locally using `persist_directory`
+- Automatically rebuilt if missing
+
+⚠️ Note: The Chroma DB is **not included** in the repository
+Users must generate embeddings locally(demo mode supported).
+
+**_CineRecall does not ship with pre-populated databases._**
+
+---
+
+## 🧩 Chunking Strategy
+
+CineRecall evaluates multiple **recursive chunking strategies**
+
+- Chunk sizes: **200 / 700 / 1200 tokens**
+- Overlap-aware recursive splitting
+- Chunk types tracked via metadata(plot type, source)
+
+Chunking is treated as a **first-class hyperparameter**, not a fixed choice.
+
+---
+
+## 🧬 Embeddings Strategy
+
+The following embedding models were empirically compared:
+
+- BAAI/bge-base-en-v1.5
+- all-mpnet-base-v2
+- all-MiniLM-L6-v2
+
+Each model was evaluated across multiple chunk sizes and retrieval strategies.
+
+### Embedding Model Selected
+
+- BAAI/bge-base-en-v1.5
+
+### Why BGE?
+
+- Performed the best during evaluation
+- Near-API-level performance
+- No runtime costs
+- Privacy (local execution)
+- Optimized for retrieval tasks
 
 ---
 
@@ -135,39 +194,67 @@ Retrieval quality is the most critical component of CineRecall.
 
 Each serves a different retrieval purpose.
 
----
+Two retrieval approaches were benchmarked:
 
-## 🧬 Embeddings Strategy
+- **Similarity Search**
 
-### Embedding Model
+  - Pure cosine similarity
+  - Optimizes raw relevance
+  - Higher redundancy risk
 
-- BAAI/bge-base-en-v1.5
+- **Max Marginal Relevance(MMR)**
+  - Balances relevance and diversity
+  - Reduces duplicate chunks from the same movie
+  - Produces cleaner LLM context
 
-### Why BGE?
+⚠️ Note on MMR:
+MMR reduces redundancy at the movie level but may still return
+multiple chunks from the same document if chunk granularity is high.
 
-- Near-API-level performance
-- No runtime costs
-- Privacy (local execution)
-- Optimized for retrieval tasks
+**Final Choice**: Max Marginal Relevance
 
 ---
 
 ## 📊 Retrieval Evaluation & Analytics
 
-To validate retrieval quality, I built a custom benchmark:
+CineRecall includes a custom retrieval benchmark designed specifically for fuzzy recall tasks.
 
-- For each query:
-  - retrieve top-K results
-  - count how often the expected movie appears
-  - track lowest rank position
+**Dataset**
 
-![Retrieval Analytics](resources/analytics.png)
+- ~3000 movies
+- Multiple plot variants per movie
+- Tested with User queries written as **fuzzy memory descriptions** for 50 movies
 
-This allowed:
+**Metrics Used**
 
-- empirical comparison of chunking strategies
-- detection of metadata pollution
-- validation before LLM integration
+| Metric                    | Description                                                  |
+| ------------------------- | ------------------------------------------------------------ |
+| Hit@N                     | Fraction of queries where the correct movie appears in top-N |
+| MRR(Mean Reciprocal Rank) | Rewards earlier correct retrieval                            |
+| Redundancy@N              | Measures dominance of the most frequent movie in top-N       |
+
+### 📈 Evaluation Results (Summary)
+
+**Similarity Search**
+Key observations:
+
+- Best performance with **Recursive(200-700) chunks**
+- `BAAI/bge-base-en-v1.5` consistently outperforms other embeddings
+- Larger chunk sizes degrade recall significantly
+
+**MMR Search**
+
+Key observations:
+
+- Slight recall tradeoff v spure similarity
+- **Significant reduction in redundancy**
+- More diverse and informative LLM context
+
+🔎**Key Insight**
+
+> Bottom line: Smaller chunks (200–700), BGE embeddings, and MMR retrieval produced the best balance of recall and evidence diversity for fuzzy recall queries.
+
+![Retrieval Analytics](resources/metric_evaluations_50.png)
 
 ---
 
@@ -189,6 +276,7 @@ Each prompt contains:
 
 - LLM used: OpenAI GPT-4o-mini
 - Role: evidence evaluator, not knowledge oracle
+- Only the **top, diverse evidence** is sent to the LLM
 - Must:
   - use only provided context
   - return valid JSON
@@ -231,113 +319,28 @@ This is a **_deliberate engineering trade-off_**, not a limitation.
 
 **Phase 2: Retrieval Optimization**
 
-- Chunking & embedding experiments
-- MMR / hybrid search evaluation
+- OpenAI embedding comparison
+- Query rewriting & intent classification
+- Hybrid MB25 + vector retrieval
+- NER-based reranking
 
-**Phase 3 "Adaptive Generation**
+**Phase 3: Adaptive Generation**
 
 - Ask clarifying questions on low confidence
 
-**Phase 4 "Extensions (Optional)**
+**Phase 4: Extensions (Optional)**
 
 - Streaming links
 - Recommendation layer
 
 ---
 
-## 📁 Data & Database Availability
+## ⚙️ Running the Project
 
-**_CineRecall does not ship with pre-populated databases._**
+### Modes
 
-For legal, size, and reproducibility reasons, neither the SQLite database nor the Chroma vector store are included in this repository.
-
-Why?
-
-- Movie plot data is sourced from TMDB and Wikipedia
-- Vector databases can be large and non-portable
-- Embeddings should be reproducible, not committed artifacts
-- This mirrors real-world ML systems, where databases are environment-specific
-
-### 🗄️ Databases Used
-
-#### 1️⃣ SQLite (Structured Metadata)
-
-SQLite is used to store:
-
-- movie metadata
-- titles and alternate titles
-- genres
-- cast & crew
-- plot variants (short / detailed)
-
-📌 Status:
-
-❌ Not included in the repo
-
-✅ Created via the offline ingestion pipeline
-
-#### 2️⃣ ChromaDB (Vector Store)
-
-ChromaDB stores:
-
-- embeddings for movie documents
-- chunked detailed plots
-- atomic title / tagline / short plot documents
-
-📌 Status:
-
-❌ Not included in the repo
-
-✅ Generated locally after embeddings are created
-
----
-
-## 🧱 Required Setup (Before Running the App)
-
-Before launching the Streamlit app, users must:
-
-1. Run the offline ingestion pipeline
-
-- Fetch data from TMDB & Wikipedia
-- Store structured data in SQLite
-- Generate embeddings
-- Populate ChromaDB
-
-2. Verify database paths
-
-- SQLite path
-- Chroma persist directory
-
-Only after this step is complete can CineRecall run end-to-end.
-
-### ⚙️ Offline Ingestion Pipeline (Required)
-
-TMDB / Wikipedia -> Data Cleaning -> SQLite DB -> Embedding Generation -> ChromaDB
-
-This separation ensures:
-
-- clean experimentation
-- controlled retrieval evaluation
-- no hidden runtime dependencies
-
----
-
-## ⚠️ Limitations & Trade-offs
-
-- Not optimized for latency
-- Focused on correctness over recall
-- Small LLM context window by design
-- Retrieval quality prioritized over model size
-- All trade-offs are explicit and intentional.
-
----
-
-## 🚀 How to Run Locally
-
-⚠️ Prerequisite:
-This project requires running the offline ingestion pipeline
-to generate both the SQLite database and the Chroma vector store.
-The app will not function without them.
+- **Demo mode**(default): loads sample processed documents
+- **Custom mode**: user plug in their own data pipelines
 
 - Step 1: Clone and Install Dependencies
 
@@ -349,6 +352,32 @@ source cineRecall_env/bin/activate # or Scripts\activate on Windows
 pip install -r requirements.txt
 ```
 
+#### **For demo mode**:
+
+- Step 2: create .env file
+
+.env
+
+```
+APP_MODE=demo
+DEMO_DOCS=data/processed/demo_chunks.json
+CHROMA_DIR_DEMO=data/chroma_demo/v0
+```
+
+- Step 3: Run the data ingestion code:
+
+```
+python -m src.ingestion.data_ingestion
+```
+
+- Step 4: Launch the UI:
+
+```
+streamlit run app.py
+```
+
+#### **For custom mode**:
+
 - Step 2: Download datasets and get the API keys
 
   - [Download](https://grouplens.org/datasets/movielens/latest/) the MovieLens dataset
@@ -358,35 +387,16 @@ pip install -r requirements.txt
 - Step 3: create .env file
 
 ```
-# Required for data fetching
+...
+APP_MODE=custom
 TMDB_API_READ_ACCESS_TOKEN = <your_tmdb_access_token>
-TMDB_BASE_URL=https://api.themoviedb.org/3/movie/
-WIKI_URL=https://en.wikipedia.org/api/rest_v1/page/html/
 INDEX_FILE_PATH=<path_to_file>
 TITLES_FILE_PATH=<path_to_file>
 MOVIE_DETAILS_FILE=<path_to_file_to_keep_merged_csvs_with_data_for_movie>
-SEMAPHORE_CONCURRENCY=5
 SQLITE_DB_PATH=<your_sqlite_db_path>
-
-# required for embedding, and retrieval
-HUGGINGFACE_EMBEDDING_MODEL=BAAI/bge-base-en-v1.5
-CHROMA_MOVIES_COLLECTION=<your_chroma_collection_name>
-CHROMA_DIR=<your_chroma_persist_dir_path>
-CHROMA_DB_VERSION=v0
-LAST_EMBEDDED_ID=0
-APP_MODE=demo
-DEMO_DOCS=<path to demo movie details file>
-CHROMA_DIR_DEMO=<demo_dir_for_chroma>
-
-# required for LLM
-OPENAI_API_KEY=<your_open_ai_key>
 ```
 
-- **If you want to run the app without much hassle, do the following, else, go to step 4:**
-
-  - set APP_MODE=demo in .env file
-  - Run `python -m src.ingestion.data_ingestion`
-  - Launch the app `streamlit run app.py`
+_Full .env sample file is provided as .env.example_
 
 - Step 4: Create the database to store the movies details and to create the tables, run the commands in file 'createTables.sql'
 
@@ -437,15 +447,24 @@ streamlit run app.py
 
 ---
 
+## ⚠️ Limitations & Trade-offs
+
+- Not optimized for latency
+- Small LLM context window by design
+- Retrieval quality prioritized over model size
+- All trade-offs are explicit and intentional.
+
+---
+
 ## 📚 What I Learned Building This
 
-This project taught me:
+Key engineering lessons from building CineRecall:
 
 ### 1. Retrieval is 80% of RAG Quality
 
 The best LLM can't fix bad retrieval. I spent most of my time on:
 
-- Chunk size optimization (tested 200, 500, 700, 1200 tokens)
+- Chunk size optimization (tested 200, 700, 1200 tokens)
 - Metadata enrichment (adding actors to embedded text improved actor-based queries by 25%)
 
 ### 2. Evaluation Before LLM Integration
@@ -458,7 +477,7 @@ I built retrieval evaluation **before** adding the LLM because:
 
 ### 3. Embeddings Model Choice Matters
 
-Upgrading from MiniLM → BGE improved Hit@1 by 14% with zero code changes.
+Upgrading from MiniLM → BGE improved Hit@1 by 8% with zero code changes.
 Key lesson: **model selection is a high-leverage decision**.
 
 ### 4. Design Trade-offs are Explicit
@@ -469,6 +488,18 @@ Every decision has costs:
 - Larger context → better LLM reasoning, higher costs
 - Local embeddings → no runtime cost, slower than API
 - I documented every trade-off and tested alternatives.
+
+### 5. RAG Is a Systems Problem
+
+RAG quality depends on:
+
+- data modeling
+- chunking
+- retrieval
+- evaluation
+- prompting
+
+Optimizing only the LLM is insufficient.
 
 ## 🙏 Acknowledgements
 

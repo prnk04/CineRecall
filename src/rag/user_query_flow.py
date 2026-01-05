@@ -70,7 +70,7 @@ class UserQuery:
                     di = DataIngestion(20, 0)
                     di.ingest_from_json()
 
-            relevant_docs = self.vector_store.similarity_search_with_score(
+            relevant_docs = self.vector_store.max_marginal_relevance_search(
                 user_input, k=10
             )
 
@@ -81,9 +81,9 @@ class UserQuery:
 
             logger.info("User input: %s", user_input)
             print("-" * 150)
-            for i, (doc, score) in enumerate(relevant_docs):
+            for i, doc in enumerate(relevant_docs):
                 print(
-                    f"Movie from metadata: {doc.metadata["alt_title"]}\nChunk: {doc.page_content}\nSimilarity score: {score:.3f}"
+                    f"Movie from metadata: {doc.metadata["alt_title"]}\nChunk: {doc.page_content}\n"
                 )
                 if doc.metadata["alt_title"] == movie_expected:
                     num_occurrences += 1
@@ -128,7 +128,7 @@ class UserQuery:
 
             plots_to_send = ""
 
-            for doc, score in relevant_docs:
+            for doc in relevant_docs:
                 if doc.metadata["chunkType"] == "tagline":
                     max_tagline -= 1
                     if max_tagline < 0:
@@ -218,3 +218,15 @@ class UserQuery:
         except Exception as e:
             logger.error("Error in data retrieval %s", e)
             logError(e, "UserQuery.retrieve_movie", "Error in retrieving data")
+
+
+def main():
+    uq = UserQuery()
+    uq.retrieve_movie(
+        "Woman runs away from her home and frames her husband for her allegged murder",
+        "Gone Girl",
+    )
+
+
+if __name__ == "__main__":
+    main()
